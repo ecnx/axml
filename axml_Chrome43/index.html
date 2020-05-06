@@ -1,0 +1,57 @@
+<!doctype html>
+<html>
+<head>
+	
+</head>
+<body>
+	<table border="0">
+		<tr>
+			<td rowspan="3">
+				<img id="icon">
+			</td>
+			<td colspan="2" id="appname"></td>
+		</tr>
+		<tr>
+			<td>VersionName</td>
+			<td id="appvername"></td>
+		</tr>
+		<tr>
+			<td>VersionCode</td>
+			<td id="appvercode"></td>
+		</tr>
+	</table>
+	<label>
+		<input type="file" onchange="onfiles(this)">
+		<br>
+		<textarea style="min-width:70vw; min-height:70vh"></textarea>
+	</label>
+	<div id="iw"></div>
+	<script src="https://leorchn.github.io/js/baseLib.js"></script>
+	<script src="https://cdn.bootcdn.net/ajax/libs/jszip/3.3.0/jszip.min.js"></script>
+	<script src="axml_ECMAScript5_readonly.js"></script>
+	<script src="android.R.attr.js"></script>
+	<script>
+		function onfiles(e){
+			main(e.files);
+		}
+		
+		function main(f){
+			while(iw.children.length) iw.children[0].remove();
+			JSZip.loadAsync(f[0]).then(function(z){ // load zip file
+				z.file('AndroidManifest.xml').async('uint8array').then(function(b){
+					parse_to_xml(b); // accept any var that can be parse to Array
+				});
+				for(var o in z.files){
+					if(o.endsWith('.png')){ // check if is png file 
+						z.file(o).async('uint8array').then(function(b){
+							var p = document.createElement('img');
+							p.src = URL.createObjectURL(new Blob([b]));
+							iw.appendChild(p);
+						});
+					}
+				}
+			});
+		}
+	</script>
+</body>
+</html>
