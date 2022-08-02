@@ -2,6 +2,7 @@
 
 /* jshint esversion: 6 */
 /* jshint node: true */
+/* jshint bitwise: false */
 "use strict";
 
 const fs = require('fs');
@@ -12,23 +13,23 @@ function abort(message) {
 }
 
 function le32_get(array, offset) {
-    return (array[offset + 3] << 24) | (array[offset + 2] << 16) | (array[offset + 1] << 8) | array[offset];
+    return ((array[offset + 3] << 24) >>> 0) | ((array[offset + 2] << 16) >>> 0) | ((array[offset + 1] << 8) >>> 0) | array[offset];
 }
 
 function le16_get(array, offset) {
-    return (array[offset + 1] << 8) | array[offset];
+    return ((array[offset + 1] << 8) >>> 0) | array[offset];
 }
 
 function le32_put(array, offset, value) {
     array[offset] = value & 0xff;
-    array[offset + 1] = (value & 0xff00) >> 8;
-    array[offset + 2] = (value & 0xff0000) >> 16;
-    array[offset + 3] = (value & 0xff000000) >> 24;
+    array[offset + 1] = (value & 0xff00) >>> 8;
+    array[offset + 2] = (value & 0xff0000) >>> 16;
+    array[offset + 3] = (value & 0xff000000) >>> 24;
 }
 
 function le16_put(array, offset, value) {
     array[offset] = value & 0xff;
-    array[offset + 1] = (value & 0xff00) >> 8;
+    array[offset + 1] = (value & 0xff00) >>> 8;
 }
 
 function parse_manifest_header(array, offset) {
@@ -130,18 +131,6 @@ function bind_resource_ids(string_pool, resource_pool) {
     console.log('bound ' + bound + ' resource ids.');
 }
 
-function find_document_start(array, offset) {
-    while (offset + 4 < array.length) {
-        if (le32_get(array, offset) == 0x00080003) {
-            return offset;
-        }
-
-        offset += 4;
-    }
-
-    return -1;
-}
-
 function type2str(type) {
     switch (type) {
         case 0x01000008:
@@ -211,7 +200,7 @@ function parse_attribute(array, offset, string_pool) {
 
     result.name_string = get_string_from_pool(string_pool, result.name);
 
-    if (result.type === 0x03000008) { // type string
+    if (result.type === 0x03000008) { /* type string */
         result.value_string = get_string_from_pool(string_pool, result.value);
     }
 
@@ -329,21 +318,21 @@ function decompress_xml(source, destination) {
 }
 
 function put_manifest_header(array, offset, file_size) {
-    le32_put(array, offset, 0x0003); // magic
-    le32_put(array, offset + 2, 8); // self size
-    le32_put(array, offset + 4, file_size); // file size
+    le32_put(array, offset, 0x0003); /* magic bytes */
+    le32_put(array, offset + 2, 8); /* self size */
+    le32_put(array, offset + 4, file_size); /* file size */
 
-    return 8; // chunk size
+    return 8; /* chunk size */
 }
 
 function put_string_pool(array, base, strings) {
-    le32_put(array, base, 0x0001); // magic
-    le32_put(array, base + 2, 28); // self size
+    le32_put(array, base, 0x0001); /* magic bytes */
+    le32_put(array, base + 2, 28); /* self size */
     le32_put(array, base + 8, strings.length);
-    le32_put(array, base + 12, 0); // nstyles
-    le32_put(array, base + 16, 0); // flags
+    le32_put(array, base + 12, 0); /* nstyles */
+    le32_put(array, base + 16, 0); /* flags */
 
-    le32_put(array, base + 24, 0); // styles offset
+    le32_put(array, base + 24, 0); /* styles offset */
 
     let offset = base + 28;
 
@@ -354,7 +343,7 @@ function put_string_pool(array, base, strings) {
         index += 4 + strings[i].length;
     }
 
-    le32_put(array, base + 20, offset - base); // strings offset
+    le32_put(array, base + 20, offset - base); /* strings offset */
 
     for (let i = 0; i < strings.length; i++) {
         const svalue = Buffer.from(strings[i].value, 'utf16le');
@@ -367,13 +356,13 @@ function put_string_pool(array, base, strings) {
         svalue.copy(array, offset, 0, svalue.length);
         offset += svalue.length;
 
-        le16_put(array, offset, 0); // string terminator
+        le16_put(array, offset, 0); /* string terminator */
         offset += 2;
     }
 
     let chunk_size = offset - base;
     if (chunk_size % 4) {
-        chunk_size += 4 - chunk_size % 4; // align to 4 bytes
+        chunk_size += 4 - chunk_size % 4; /* align to 4 bytes */
     }
 
     le32_put(array, base + 4, chunk_size);
@@ -381,8 +370,8 @@ function put_string_pool(array, base, strings) {
 }
 
 function put_resource_pool(array, base, strings) {
-    le32_put(array, base, 0x0180); // magic
-    le32_put(array, base + 2, 8); // self size
+    le32_put(array, base, 0x0180); /* magic bytes */
+    le32_put(array, base + 2, 8); /* self size */
 
     let offset = base + 8;
 
@@ -403,7 +392,7 @@ function put_resource_pool(array, base, strings) {
         i++;
     }
 
-    const chunk_size = offset - base; // no need to align
+    const chunk_size = offset - base; /* no need to align */
     le32_put(array, base + 4, chunk_size);
 
     return base + chunk_size;
@@ -421,7 +410,7 @@ function put_xml_tag(array, offset, tag) {
     switch (tag.role) {
         case 'start-ns':
         case 'end-ns':
-            le32_put(array, offset, tag.role == 'start-ns' ? 0x00100100 : 0x00100101); // role
+            le32_put(array, offset, tag.role == 'start-ns' ? 0x00100100 : 0x00100101); /* role */
             le32_put(array, offset + 4, tag.chunk_size);
             le32_put(array, offset + 8, tag.line);
             le32_put(array, offset + 12, tag.comment);
@@ -430,7 +419,7 @@ function put_xml_tag(array, offset, tag) {
             break;
 
         case 'start-tag':
-            le32_put(array, offset, 0x00100102); // role
+            le32_put(array, offset, 0x00100102); /* role */
             le32_put(array, offset + 4, tag.chunk_size);
             le32_put(array, offset + 8, tag.line);
             le32_put(array, offset + 12, tag.comment);
@@ -445,7 +434,7 @@ function put_xml_tag(array, offset, tag) {
             break;
 
         case 'text':
-            le32_put(array, offset, 0x00100104); // role
+            le32_put(array, offset, 0x00100104); /* role */
             le32_put(array, offset + 4, tag.chunk_size);
             le32_put(array, offset + 8, tag.line);
             le32_put(array, offset + 12, tag.comment);
@@ -455,7 +444,7 @@ function put_xml_tag(array, offset, tag) {
             break;
 
         case 'end-tag':
-            le32_put(array, offset, 0x00100103); // role
+            le32_put(array, offset, 0x00100103); /* role */
             le32_put(array, offset + 4, tag.chunk_size);
             le32_put(array, offset + 8, tag.line);
             le32_put(array, offset + 12, tag.comment);
